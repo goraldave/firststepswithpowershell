@@ -1,0 +1,1 @@
+Get-ChildItem '\\directory\directory' -Name | Out-File list.txt
