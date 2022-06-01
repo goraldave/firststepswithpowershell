@@ -1,0 +1,11 @@
+
+$MinFreeSpace_GB = 10
+$volume = [string]::IsNullOrEmpty((Get-CimInstance -ClassName CIM_LogicalDisk | Where-Object {$_.DeviceID -eq 'C:' -and $_.FreeSpace -lt $MinFreeSpace_GB * 1GB}))
+if ($volume) 
+     {
+    'The C: drive has at least {0} GB free.' -f $MinFreeSpace_GB
+    }
+    else
+    {
+    Write-HOST 'Low free space on Drive C:!' -BackgroundColor yellow -ForegroundColor red
+    }
