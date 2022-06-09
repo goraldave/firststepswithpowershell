@@ -1,3 +1,9 @@
+param (
+    [Parameter(Mandatory = $true)]
+    [string]
+    $Drive
+)
+
 $logPath = 'C:\Logs'
 $logFile = "$logPath\driveCheck.log" 
 
@@ -19,8 +25,9 @@ try {
        
         if ($volume) {
             $total = $volume.Size
+            $volumefreeGB = $volume.SizeRemaining /1GB
             $percentFree = [int](($volume.SizeRemaining / $total) * 100)
-            Add-Content -Path $logFile -Value "[INFO] Percent Free: $percentFree%"
+            Add-Content -Path $logFile -Value "[INFO] Percent Free: $percentFree% = $volumefreeGB GB"
         }
         else {
             Add-Content -Path $logFile -Value "[ERROR] $Drive was not found."
@@ -35,13 +42,42 @@ catch {
 
 
 
-if ($percentFree -le 15) 
-{
-    Write-HOST "You have only $percentFree% disk space." -BackgroundColor Black -ForegroundColor RED
+if ($percentFree -le 22) {
+    Write-HOST "You have only $percentFree% disk space = $volumefreeGB GB." -BackgroundColor Black -ForegroundColor RED
     Add-Content -Path $logFile -Value '[INFO] Message about low disk space sent.'
+    
+    $confirmation = Read-Host "Are you Sure You Want To Proceed (y/n):"
+    if ($confirmation -eq 'y') {
+    
+        $Recycler = (New-Object -ComObject Shell.Application).NameSpace(0xa)
+        $Recycler.items() | foreach { rm $_.path -force -recurse } 
+
+       Write-Host "THE RECYCLE BIN IS NOW EMPTY" -BackgroundColor Black -ForegroundColor Green
+       Add-Content -Path $logFile -Value "[INFO] Removing files from recycle bin - now there is $percentFree% = $volumefreeGB GB on disk"
+
+       $volume = Get-Volume -ErrorAction Stop | Where-Object { $_.DriveLetter -eq $Drive }
+       $total = $volume.Size
+       $volumefreeGB = $volume.SizeRemaining /1GB
+       $percentFree = [int](($volume.SizeRemaining / $total) * 100)
+       Add-Content -Path $logFile -Value "[INFO] Percent Free after deleting files from recycle bin: $percentFree% = $volumefreeGB GB"
+
+       Write-HOST "You have $percentFree% = $volumefreeGB GB." -BackgroundColor Black -ForegroundColor Green
+       Write-Host "Press any key to continue..."
+        $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    } 
+    else {
+        Add-Content -Path $logFile -Value '[INFO] Message about disk space sent.'
+        Write-HOST "You have $percentFree% = $volumefreeGB GB." -BackgroundColor Black -ForegroundColor Green
+        Write-Host "Press any key to continue..."
+        $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     }
-else
-    {
-    Write-HOST "You have $percentFree%." -BackgroundColor Black -ForegroundColor Green
-     Add-Content -Path $logFile -Value '[INFO] Message about disk space sent.'
+
+}  
+else {
+        Write-HOST "You have $percentFree% = $volumefreeGB GB." -BackgroundColor Black -ForegroundColor Green
+        Add-Content -Path $logFile -Value '[INFO] Message about disk space sent.'
+        
+        Write-Host "Press any key to continue..."
+        $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     }
+
