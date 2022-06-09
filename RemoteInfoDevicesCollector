@@ -1,0 +1,41 @@
+#declare servers we will connect to remotely
+$computers = Get-Content -Path "c:\scripts\computernames.txt"
+#capture credentials used for remote access
+$creds = Get-Credential
+ 
+#declare array to hold remote command results
+$remoteResults = @()
+ 
+#declare a splat for our Invoke-Command parameters
+$invokeSplat = @{
+    ComputerName  = $computers
+    Credential    = $creds
+    ErrorVariable = 'connectErrors'
+    ErrorAction   = 'SilentlyContinue'
+}
+ 
+#execute remote command with splatted parameters.
+#store results in variable
+#errors will be stored in connectErrors
+$remoteResults = Invoke-Command @invokeSplat -ScriptBlock {
+    $obj = [PSCustomObject]@{
+        Name      = $env:COMPUTERNAME
+        CPUs      = "-------"
+        Memory    = "-------"
+        FreeSpace = "-------"
+    }
+    $obj.CPUs = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
+    $obj.Memory = Get-CimInstance Win32_OperatingSystem `
+        | Measure-Object -Property TotalVisibleMemorySize -Sum `
+        | ForEach-Object { [Math]::Round($_.sum / 1024 / 1024) }
+    $driveData = Get-PSDrive C | Select-Object Used, Free
+    $total = $driveData.Used + $driveData.Free
+    $calc = [Math]::Round($driveData.Free / $total, 2)
+    $obj.FreeSpace = $calc * 100
+    return $obj
+}
+ 
+#capture any connection errors
+$remoteFailures = $connectErrors.CategoryInfo `
+    | Where-Object {$_.Reason -eq 'PSRemotingTransportException'} `
+    | Select-Object TargetName,@{n = 'ErrorInfo'; E = {$_.Reason} }
