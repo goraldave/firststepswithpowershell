@@ -1,9 +1,10 @@
+#Checking disk space on selected drive and alert if less than $number %
 param (
     [Parameter(Mandatory = $true)]
     [string]
     $Drive
 )
-
+[int]$number = '22'  #set the disk % 
 $logPath = 'C:\Logs'
 $logFile = "$logPath\driveCheck.log" 
 
@@ -42,7 +43,7 @@ catch {
 
 
 
-if ($percentFree -le 22) {
+if ($percentFree -le $number) {
     Write-HOST "You have only $percentFree% disk space = $volumefreeGB GB." -BackgroundColor Black -ForegroundColor RED
     Add-Content -Path $logFile -Value '[INFO] Message about low disk space sent.'
     
